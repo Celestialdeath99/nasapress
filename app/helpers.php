@@ -14,7 +14,7 @@ use Illuminate\Contracts\Container\Container as ContainerContract;
  * @return ContainerContract|mixed
  * @SuppressWarnings(PHPMD.StaticAccess)
  */
-function sage($abstract = null, $parameters = [], ContainerContract $container = null)
+function sage($abstract = null, $parameters = array(), ContainerContract $container = null)
 {
     $container = $container ?: Container::getInstance();
     if (!$abstract) {
@@ -52,7 +52,7 @@ function config($key = null, $default = null)
  * @param array $data
  * @return string
  */
-function template($file, $data = [])
+function template($file, $data = array())
 {
     return sage('blade')->render($file, $data);
 }
@@ -63,7 +63,7 @@ function template($file, $data = [])
  * @param array $data
  * @return string
  */
-function template_path($file, $data = [])
+function template_path($file, $data = array())
 {
     return sage('blade')->compiledPath($file, $data);
 }

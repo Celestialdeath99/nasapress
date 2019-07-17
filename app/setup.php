@@ -13,7 +13,7 @@ use Roots\Sage\Template\BladeProvider;
  */
 add_action('wp_enqueue_scripts', function () {
     wp_enqueue_style('sage/main.css', asset_path('styles/main.css'), false, null);
-    wp_enqueue_script('sage/main.js', asset_path('scripts/main.js'), ['jquery'], null, true);
+    wp_enqueue_script('sage/main.js', asset_path('scripts/main.js'), array('jquery'), null, true);
 }, 100);
 
 add_action('wp_print_styles', function () {
@@ -51,9 +51,9 @@ add_action('after_setup_theme', function () {
      * Register navigation menus
      * @link https://developer.wordpress.org/reference/functions/register_nav_menus/
      */
-    register_nav_menus([
+    register_nav_menus(array(
         'primary_navigation' => __('Primary Navigation', 'sage')
-    ]);
+    ));
 
     /**
      * Enable post thumbnails
@@ -65,7 +65,7 @@ add_action('after_setup_theme', function () {
      * Enable HTML5 markup support
      * @link https://developer.wordpress.org/reference/functions/add_theme_support/#html5
      */
-    add_theme_support('html5', ['caption', 'comment-form', 'comment-list', 'gallery', 'search-form']);
+    add_theme_support('html5', array('caption', 'comment-form', 'comment-list', 'gallery', 'search-form'));
 
     /**
      * Enable selective refresh for widgets in customizer
@@ -125,26 +125,27 @@ add_action('after_setup_theme', function () {
     /**
      * Sage config
      */
-    $paths = [
+    $upload_dir   = wp_upload_dir();
+    $paths = array(
         'dir.stylesheet' => get_stylesheet_directory(),
         'dir.template'   => get_template_directory(),
-        'dir.upload'     => wp_upload_dir()['basedir'],
+        'dir.upload'     => $upload_dir['basedir'],
         'uri.stylesheet' => get_stylesheet_directory_uri(),
         'uri.template'   => get_template_directory_uri(),
-    ];
-    $viewPaths = collect(preg_replace('%[\/]?(resources/views)?[\/.]*?$%', '', [STYLESHEETPATH, TEMPLATEPATH]))
+    );
+    $viewPaths = collect(preg_replace('%[\/]?(resources/views)?[\/.]*?$%', '', array(STYLESHEETPATH, TEMPLATEPATH)))
         ->flatMap(function ($path) {
-            return ["{$path}/resources/views", $path];
+            return array("{$path}/resources/views", $path);
         })->unique()->toArray();
 
         // die(var_dump($viewPaths));
-    config([
+    config(array(
         'assets.manifest' => "{$paths['dir.stylesheet']}/../dist/assets.json",
         'assets.uri'      => "{$paths['uri.stylesheet']}/dist",
         'view.compiled'   => "{$paths['dir.upload']}/cache/compiled",
-        'view.namespaces' => ['App' => WP_CONTENT_DIR],
+        'view.namespaces' => array('App' => WP_CONTENT_DIR),
         'view.paths'      => $viewPaths,
-    ] + $paths);
+     ) + $paths);
 
     /**
      * Add JsonManifest to Sage container
@@ -161,7 +162,8 @@ add_action('after_setup_theme', function () {
         if (!file_exists($cachePath)) {
             wp_mkdir_p($cachePath);
         }
-        (new BladeProvider($app))->register();
+        $blade = new BladeProvider($app);
+        $blade->register();
         return new Blade($app['view'], $app);
     });
 
@@ -176,7 +178,7 @@ add_action('after_setup_theme', function () {
 /**
  * Init config
  */
-sage()->bindIf('config', Config::class, true);
+sage()->bindIf('config', 'Roots\Sage\Config', true);
 
 require_once 'lib/App/header-settings.php';
 require_once 'lib/App/center-information-widget.php';

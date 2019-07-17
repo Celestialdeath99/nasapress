@@ -44,7 +44,7 @@ class Blade
      * @param array  $mergeData
      * @return string
      */
-    public function render($view, $data = [], $mergeData = [])
+    public function render($view, $data = array(), $mergeData = array())
     {
         /** @var \Illuminate\Contracts\Filesystem\Filesystem $filesystem */
         $filesystem = $this->app['files'];
@@ -57,7 +57,7 @@ class Blade
      * @param array  $mergeData
      * @return string
      */
-    public function compiledPath($file, $data = [], $mergeData = [])
+    public function compiledPath($file, $data = array(), $mergeData = array())
     {
         $rendered = $this->file($file, $data, $mergeData);
         /** @var EngineInterface $engine */
@@ -89,7 +89,7 @@ class Blade
         $view = $this->applyNamespaceToPath($view);
 
         // Remove unnecessary parts of the path
-        $view = str_replace(array_merge($this->app['config']['view.paths'], ['.blade.php', '.php']), '', $view);
+        $view = str_replace(array_merge($this->app['config']['view.paths'], array('.blade.php', '.php')), '', $view);
 
         // Remove superfluous and leading slashes
         return ltrim(preg_replace('%//+%', '/', $view), '/');
@@ -124,6 +124,6 @@ class Blade
      */
     public function __call($method, $params)
     {
-        return call_user_func_array([$this->env, $method], $params);
+        return call_user_func_array(array($this->env, $method), $params);
     }
 }

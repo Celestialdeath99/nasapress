@@ -22,19 +22,4 @@ class FileViewFinder extends \Illuminate\View\FileViewFinder
         rsort($templates);
         return $this->getPossibleViewFilesFromTemplates($templates);
     }
-
-    /**
-     * Get an array of possible view files from an array of templates
-     *
-     * @param array $templates
-     * @return array
-     */
-    public function getPossibleViewFilesFromTemplates($templates)
-    {
-        return call_user_func_array('array_merge', array_map(function ($template) {
-            return array_map(function ($extension) use ($template) {
-                return str_replace('.', '/', $template).'.'.$extension;
-            }, $this->extensions);
-        }, $templates));
-    }
 }

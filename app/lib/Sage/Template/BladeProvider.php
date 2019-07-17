@@ -18,7 +18,7 @@ class BladeProvider extends ViewServiceProvider
      * @param array             $config
      * @SuppressWarnings(PHPMD.StaticAccess)
      */
-    public function __construct(ContainerContract $container = null, $config = [])
+    public function __construct(ContainerContract $container = null, $config = array())
     {
         /** @noinspection PhpParamsInspection */
         parent::__construct($container ?: Container::getInstance());
@@ -46,7 +46,7 @@ class BladeProvider extends ViewServiceProvider
      */
     public function registerFilesystem()
     {
-        $this->app->bindIf('files', Filesystem::class, true);
+        $this->app->bindIf('files', 'Illuminate\Filesystem\Filesystem', true);
         return $this;
     }
 
@@ -55,7 +55,7 @@ class BladeProvider extends ViewServiceProvider
      */
     public function registerEvents()
     {
-        $this->app->bindIf('events', Dispatcher::class, true);
+        $this->app->bindIf('events', 'Illuminate\Events\Dispatcher', true);
         return $this;
     }
 
@@ -70,22 +70,6 @@ class BladeProvider extends ViewServiceProvider
     public function registerFactory()
     {
         parent::registerFactory();
-        return $this;
-    }
-
-    /**
-     * Register the view finder implementation.
-     */
-    public function registerViewFinder()
-    {
-        $this->app->bindIf('view.finder', function ($app) {
-            $config = $this->app['config'];
-            $paths = $config['view.paths'];
-            $namespaces = $config['view.namespaces'];
-            $finder = new FileViewFinder($app['files'], $paths);
-            array_map([$finder, 'addNamespace'], array_keys($namespaces), $namespaces);
-            return $finder;
-        }, true);
         return $this;
     }
 }

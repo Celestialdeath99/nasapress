@@ -20,7 +20,7 @@ add_filter('body_class', function (array $classes) {
 
     /** Clean up class names for custom templates */
     $classes = array_map(function ($class) {
-        return preg_replace(['/-blade(-php)?$/', '/^page-template-views/'], '', $class);
+        return preg_replace(array('/-blade(-php)?$/', '/^page-template-views/'), '', $class);
     }, $classes);
 
     return array_filter($classes);
@@ -99,18 +99,18 @@ add_filter( 'get_the_excerpt', 'App\\build_the_excerpt', 5);
 /**
  * Template Hierarchy should search for .blade.php files
  */
-collect([
+collect(array(
     'index', '404', 'archive', 'author', 'category', 'tag', 'taxonomy', 'date', 'home',
     'frontpage', 'page', 'paged', 'search', 'single', 'singular', 'attachment'
-])->map(function ($type) {
+))->map(function ($type) {
     add_filter("{$type}_template_hierarchy", function ($templates) {
         return collect($templates)->flatMap(function ($template) {
-            $transforms = [
+            $transforms = array(
                 '%^/?(resources[\\/]views)?[\\/]?%' => '',
                 '%(\.blade)?(\.php)?$%' => ''
-            ];
+            );
             $normalizedTemplate = preg_replace(array_keys($transforms), array_values($transforms), $template);
-            return ["{$normalizedTemplate}.blade.php", "{$normalizedTemplate}.php"];
+            return array("{$normalizedTemplate}.blade.php", "{$normalizedTemplate}.php");
         })->toArray();
     });
 });
@@ -121,7 +121,7 @@ collect([
 add_filter('template_include', function ($template) {
     $data = collect(get_body_class())->reduce(function ($data, $class) use ($template) {
         return apply_filters("sage/template/{$class}/data", $data, $template);
-    }, []);
+    }, array());
     echo template($template, $data);
     // Return a blank file to make WordPress happy
     return get_theme_file_path('index.php');
