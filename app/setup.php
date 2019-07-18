@@ -79,10 +79,10 @@ add_action('after_setup_theme', function () {
      */
     add_editor_style(asset_path('styles/main.css'));
 }, 20);
-
 /**
  * Register sidebars
  */
+
 add_action('widgets_init', function () {
 	register_sidebar( array(
 		'name'			=> 'NASA Responsible Official Widget Area',
@@ -107,7 +107,15 @@ add_action('widgets_init', function () {
 		'after_widget'  => '',
 		'before_title'  => '<h3>',
         'after_title'   => '</h3>'
-	));
+    ));
+    register_sidebar( array(
+		'name'			=> 'Posts Navigation Sidebar',
+		'id'			=> 'posts-nav-bar',
+		'before_widget' => '',
+		'after_widget'  => '',
+		'before_title'  => '<h3>',
+        'after_title'   => '</h3>'
+    ));
 });
 
 /**
@@ -125,11 +133,11 @@ add_action('after_setup_theme', function () {
     /**
      * Sage config
      */
-    $upload_dir   = wp_upload_dir();
+    $uploadir = wp_upload_dir();
     $paths = array(
         'dir.stylesheet' => get_stylesheet_directory(),
         'dir.template'   => get_template_directory(),
-        'dir.upload'     => $upload_dir['basedir'],
+        'dir.upload'     => $uploadir['basedir'],
         'uri.stylesheet' => get_stylesheet_directory_uri(),
         'uri.template'   => get_template_directory_uri(),
     );

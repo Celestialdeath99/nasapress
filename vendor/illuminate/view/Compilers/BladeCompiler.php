@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 
 class BladeCompiler extends Compiler implements CompilerInterface
 {
+
     /**
      * All of the registered extensions.
      *
@@ -176,9 +177,11 @@ class BladeCompiler extends Compiler implements CompilerInterface
      */
     protected function storeVerbatimBlocks($value)
     {
-        return preg_replace_callback('/(?<!@)@verbatim(.*?)@endverbatim/s', function ($matches) {
-            $verbatimBlocks[] = $matches[1];
-            return verbatimPlaceholder;
+        $thisVar = $this;
+        return preg_replace_callback('/(?<!@)@verbatim(.*?)@endverbatim/s', function ($matches) use ($thisVar) {
+            $thisVar->verbatimBlocks[] = $matches[1];
+
+            return $thisVar->verbatimPlaceholder;
         }, $value);
     }
 
@@ -190,12 +193,12 @@ class BladeCompiler extends Compiler implements CompilerInterface
      */
     protected function restoreVerbatimBlocks($result)
     {
-        $result = preg_replace_callback('/'.preg_quote($this->verbatimPlaceholder).'/', function () {
-            return array_shift(verbatimBlocks);
+        $thisVar = $this;
+        $result = preg_replace_callback('/'.preg_quote($this->verbatimPlaceholder).'/', function () use ($thisVar) {
+            return array_shift($thisVar->verbatimBlocks);
         }, $result);
 
-        $thisVar2 = $this;
-        $thisVar2->verbatimBlocks = array();
+        $this->verbatimBlocks = array();
 
         return $result;
     }
@@ -254,9 +257,10 @@ class BladeCompiler extends Compiler implements CompilerInterface
      */
     protected function compileStatements($value)
     {
+        $thisVar = $this;
         return preg_replace_callback(
-            '/\B@(@?\w+(?:::\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x', function ($match) {
-                return compileStatement($match);
+            '/\B@(@?\w+(?:::\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x', function ($match) use ($thisVar) {
+                return $thisVar->compileStatement($match);
             }, $value
         );
     }
@@ -355,6 +359,70 @@ class BladeCompiler extends Compiler implements CompilerInterface
     }
 
     /**
+     * Compile the can statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileCan($expression)
+    {
+        return "<?php if (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->check{$expression}): ?>";
+    }
+
+    /**
+     * Compile the cannot statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileCannot($expression)
+    {
+        return "<?php if (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->denies{$expression}): ?>";
+    }
+
+    /**
+     * Compile the else-can statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileElsecan($expression)
+    {
+        return "<?php elseif (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->check{$expression}): ?>";
+    }
+
+    /**
+     * Compile the else-cannot statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileElsecannot($expression)
+    {
+        return "<?php elseif (app(\Illuminate\\Contracts\\Auth\\Access\\Gate::class)->denies{$expression}): ?>";
+    }
+
+    /**
+     * Compile the end-can statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndcan()
+    {
+        return '<?php endif; ?>';
+    }
+
+    /**
+     * Compile the end-cannot statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndcannot()
+    {
+        return '<?php endif; ?>';
+    }
+
+    /**
      * Set the echo format to be used by the compiler.
      *
      * @param  string  $format
@@ -363,5 +431,713 @@ class BladeCompiler extends Compiler implements CompilerInterface
     public function setEchoFormat($format)
     {
         $this->echoFormat = $format;
+    }
+
+    /**
+     * Compile Blade comments into an empty string.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function compileComments($value)
+    {
+        $pattern = sprintf('/%s--(.*?)--%s/s', $this->contentTags[0], $this->contentTags[1]);
+
+        return preg_replace($pattern, '', $value);
+    }
+
+    /**
+     * Compile the component statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileComponent($expression)
+    {
+        return "<?php \$__env->startComponent{$expression}; ?>";
+    }
+
+    /**
+     * Compile the end-component statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndComponent()
+    {
+        return '<?php echo $__env->renderComponent(); ?>';
+    }
+
+    /**
+     * Compile the slot statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileSlot($expression)
+    {
+        return "<?php \$__env->slot{$expression}; ?>";
+    }
+
+    /**
+     * Compile the end-slot statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndSlot()
+    {
+        return '<?php $__env->endSlot(); ?>';
+    }
+
+    /**
+     * Compile the has-section statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileHasSection($expression)
+    {
+        return "<?php if (! empty(trim(\$__env->yieldContent{$expression}))): ?>";
+    }
+
+    /**
+     * Compile the if statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileIf($expression)
+    {
+        return "<?php if{$expression}: ?>";
+    }
+
+    /**
+     * Compile the unless statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileUnless($expression)
+    {
+        return "<?php if (! {$expression}): ?>";
+    }
+
+    /**
+     * Compile the else-if statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileElseif($expression)
+    {
+        return "<?php elseif{$expression}: ?>";
+    }
+
+    /**
+     * Compile the else statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileElse()
+    {
+        return '<?php else: ?>';
+    }
+
+    /**
+     * Compile the end-if statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndif()
+    {
+        return '<?php endif; ?>';
+    }
+
+    /**
+     * Compile the end-unless statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndunless()
+    {
+        return '<?php endif; ?>';
+    }
+
+    /**
+     * Compile the if-isset statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileIsset($expression)
+    {
+        return "<?php if(isset{$expression}): ?>";
+    }
+
+    /**
+     * Compile the end-isset statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndIsset()
+    {
+        return '<?php endif; ?>';
+    }
+
+    /**
+     * Compile Blade echos into valid PHP.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function compileEchos($value)
+    {
+        foreach ($this->getEchoMethods() as $method) {
+            $value = $this->$method($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Get the echo methods in the proper order for compilation.
+     *
+     * @return array
+     */
+    protected function getEchoMethods()
+    {
+        return array(
+            'compileRawEchos',
+            'compileEscapedEchos',
+            'compileRegularEchos',
+        );
+    }
+
+    /**
+     * Compile the "raw" echo statements.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function compileRawEchos($value)
+    {
+        $pattern = sprintf('/(@)?%s\s*(.+?)\s*%s(\r?\n)?/s', $this->rawTags[0], $this->rawTags[1]);
+
+        $callback = function ($matches) {
+            $whitespace = empty($matches[3]) ? '' : $matches[3].$matches[3];
+
+            return $matches[1] ? substr($matches[0], 1) : "<?php echo {$this->compileEchoDefaults($matches[2])}; ?>{$whitespace}";
+        };
+
+        return preg_replace_callback($pattern, $callback, $value);
+    }
+
+    /**
+     * Compile the "regular" echo statements.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function compileRegularEchos($value)
+    {
+        $pattern = sprintf('/(@)?%s\s*(.+?)\s*%s(\r?\n)?/s', $this->contentTags[0], $this->contentTags[1]);
+
+        $thisVar = $this;
+
+        $callback = function ($matches) use ($thisVar) {
+            $whitespace = empty($matches[3]) ? '' : $matches[3].$matches[3];
+
+            $wrapped = sprintf($thisVar->echoFormat, $thisVar->compileEchoDefaults($matches[2]));
+
+            return $matches[1] ? substr($matches[0], 1) : "<?php echo {$wrapped}; ?>{$whitespace}";
+        };
+
+        return preg_replace_callback($pattern, $callback, $value);
+    }
+
+    /**
+     * Compile the escaped echo statements.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    protected function compileEscapedEchos($value)
+    {
+        $pattern = sprintf('/(@)?%s\s*(.+?)\s*%s(\r?\n)?/s', $this->escapedTags[0], $this->escapedTags[1]);
+
+        $callback = function ($matches) {
+            $whitespace = empty($matches[3]) ? '' : $matches[3].$matches[3];
+
+            return $matches[1] ? $matches[0] : "<?php echo e({$this->compileEchoDefaults($matches[2])}); ?>{$whitespace}";
+        };
+
+        return preg_replace_callback($pattern, $callback, $value);
+    }
+
+    /**
+     * Compile the default values for the echo statement.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public function compileEchoDefaults($value)
+    {
+        return preg_replace('/^(?=\$)(.+?)(?:\s+or\s+)(.+?)$/s', 'isset($1) ? $1 : $2', $value);
+    }
+
+    /**
+     * Compile the each statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileEach($expression)
+    {
+        return "<?php echo \$__env->renderEach{$expression}; ?>";
+    }
+
+    /**
+     * Compile the include statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileInclude($expression)
+    {
+        $expression = $this->stripParentheses($expression);
+
+        return "<?php echo \$__env->make({$expression}, array_except(get_defined_vars(), array('__data', '__path')))->render(); ?>";
+    }
+
+    /**
+     * Compile the include-if statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileIncludeIf($expression)
+    {
+        $expression = $this->stripParentheses($expression);
+
+        return "<?php if (\$__env->exists({$expression})) echo \$__env->make({$expression}, array_except(get_defined_vars(), array('__data', '__path')))->render(); ?>";
+    }
+
+    /**
+     * Compile the include-when statements into valid PHP.
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileIncludeWhen($expression)
+    {
+        $expression = $this->stripParentheses($expression);
+
+        return "<?php echo \$__env->renderWhen($expression, array_except(get_defined_vars(), array('__data', '__path'))); ?>";
+    }
+
+    /**
+     * Compile the inject statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileInject($expression)
+    {
+        $segments = explode(',', preg_replace("/[\(\)\\\"\']/", '', $expression));
+
+        $variable = trim($segments[0]);
+
+        $service = trim($segments[1]);
+
+        return "<?php \${$variable} = app('{$service}'); ?>";
+    }
+
+    /**
+     * The name of the last section that was started.
+     *
+     * @var string
+     */
+    protected $lastSection;
+
+    /**
+     * Compile the extends statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileExtends($expression)
+    {
+        $expression = $this->stripParentheses($expression);
+
+        $echo = "<?php echo \$__env->make({$expression}, array_except(get_defined_vars(), array('__data', '__path')))->render(); ?>";
+
+        $this->footer[] = $echo;
+
+        return '';
+    }
+
+    /**
+     * Compile the section statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileSection($expression)
+    {
+        $this->lastSection = trim($expression, "()'\" ");
+
+        return "<?php \$__env->startSection{$expression}; ?>";
+    }
+
+    /**
+     * Replace the @parent directive to a placeholder.
+     *
+     * @return string
+     */
+    protected function compileParent()
+    {
+        return ViewFactory::parentPlaceholder($this->lastSection ?: '');
+    }
+
+    /**
+     * Compile the yield statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileYield($expression)
+    {
+        return "<?php echo \$__env->yieldContent{$expression}; ?>";
+    }
+
+    /**
+     * Compile the show statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileShow()
+    {
+        return '<?php echo $__env->yieldSection(); ?>';
+    }
+
+    /**
+     * Compile the append statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileAppend()
+    {
+        return '<?php $__env->appendSection(); ?>';
+    }
+
+    /**
+     * Compile the overwrite statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileOverwrite()
+    {
+        return '<?php $__env->stopSection(true); ?>';
+    }
+
+    /**
+     * Compile the stop statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileStop()
+    {
+        return '<?php $__env->stopSection(); ?>';
+    }
+
+    /**
+     * Compile the end-section statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndsection()
+    {
+        return '<?php $__env->stopSection(); ?>';
+    }
+
+    /**
+     * Counter to keep track of nested forelse statements.
+     *
+     * @var int
+     */
+    protected $forElseCounter = 0;
+
+    /**
+     * Compile the for-else statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileForelse($expression)
+    {
+        $empty = '$__empty_'.++$this->forElseCounter;
+
+        preg_match('/\( *(.*) +as *(.*)\)$/is', $expression, $matches);
+
+        $iteratee = trim($matches[1]);
+
+        $iteration = trim($matches[2]);
+
+        $initLoop = "\$__currentLoopData = {$iteratee}; \$__env->addLoop(\$__currentLoopData);";
+
+        $iterateLoop = '$__env->incrementLoopIndices(); $loop = $__env->getLastLoop();';
+
+        return "<?php {$empty} = true; {$initLoop} foreach(\$__currentLoopData as {$iteration}): {$iterateLoop} {$empty} = false; ?>";
+    }
+
+    /**
+     * Compile the for-else-empty statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEmpty()
+    {
+        $empty = '$__empty_'.$this->forElseCounter--;
+
+        return "<?php endforeach; \$__env->popLoop(); \$loop = \$__env->getLastLoop(); if ({$empty}): ?>";
+    }
+
+    /**
+     * Compile the end-for-else statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndforelse()
+    {
+        return '<?php endif; ?>';
+    }
+
+    /**
+     * Compile the for statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileFor($expression)
+    {
+        return "<?php for{$expression}: ?>";
+    }
+
+    /**
+     * Compile the for-each statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileForeach($expression)
+    {
+        preg_match('/\( *(.*) +as *(.*)\)$/is', $expression, $matches);
+
+        $iteratee = trim($matches[1]);
+
+        $iteration = trim($matches[2]);
+
+        $initLoop = "\$__currentLoopData = {$iteratee}; \$__env->addLoop(\$__currentLoopData);";
+
+        $iterateLoop = '$__env->incrementLoopIndices(); $loop = $__env->getLastLoop();';
+
+        return "<?php {$initLoop} foreach(\$__currentLoopData as {$iteration}): {$iterateLoop} ?>";
+    }
+
+    /**
+     * Compile the break statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileBreak($expression)
+    {
+        if ($expression) {
+            preg_match('/\(\s*(-?\d+)\s*\)$/', $expression, $matches);
+
+            return $matches ? '<?php break '.max(1, $matches[1]).'; ?>' : "<?php if{$expression} break; ?>";
+        }
+
+        return '<?php break; ?>';
+    }
+
+    /**
+     * Compile the continue statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileContinue($expression)
+    {
+        if ($expression) {
+            preg_match('/\(\s*(-?\d+)\s*\)$/', $expression, $matches);
+
+            return $matches ? '<?php continue '.max(1, $matches[1]).'; ?>' : "<?php if{$expression} continue; ?>";
+        }
+
+        return '<?php continue; ?>';
+    }
+
+    /**
+     * Compile the end-for statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndfor()
+    {
+        return '<?php endfor; ?>';
+    }
+
+    /**
+     * Compile the end-for-each statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndforeach()
+    {
+        return '<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>';
+    }
+
+    /**
+     * Compile the while statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileWhile($expression)
+    {
+        return "<?php while{$expression}: ?>";
+    }
+
+    /**
+     * Compile the end-while statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndwhile()
+    {
+        return '<?php endwhile; ?>';
+    }
+
+    /**
+     * Compile the raw PHP statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compilePhp($expression)
+    {
+        return $expression ? "<?php {$expression}; ?>" : '<?php ';
+    }
+
+    /**
+     * Compile end-php statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndphp()
+    {
+        return ' ?>';
+    }
+
+    /**
+     * Compile the unset statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileUnset($expression)
+    {
+        return "<?php unset{$expression}; ?>";
+    }
+
+    /**
+     * Compile the stack statements into the content.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileStack($expression)
+    {
+        return "<?php echo \$__env->yieldPushContent{$expression}; ?>";
+    }
+
+    /**
+     * Compile the push statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compilePush($expression)
+    {
+        return "<?php \$__env->startPush{$expression}; ?>";
+    }
+
+    /**
+     * Compile the end-push statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndpush()
+    {
+        return '<?php $__env->stopPush(); ?>';
+    }
+
+    /**
+     * Compile the prepend statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compilePrepend($expression)
+    {
+        return "<?php \$__env->startPrepend{$expression}; ?>";
+    }
+
+    /**
+     * Compile the end-prepend statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndprepend()
+    {
+        return '<?php $__env->stopPrepend(); ?>';
+    }
+
+    /**
+     * Compile the lang statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileLang($expression)
+    {
+        if (is_null($expression)) {
+            return '<?php $__env->startTranslation(); ?>';
+        } elseif ($expression[1] === '[') {
+            return "<?php \$__env->startTranslation{$expression}; ?>";
+        } else {
+            return "<?php echo app('translator')->getFromJson{$expression}; ?>";
+        }
+    }
+
+    /**
+     * Compile the end-lang statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndlang()
+    {
+        return '<?php echo $__env->renderTranslation(); ?>';
+    }
+
+    /**
+     * Compile the choice statements into valid PHP.
+     *
+     * @param  string  $expression
+     * @return string
+     */
+    protected function compileChoice($expression)
+    {
+        return "<?php echo app('translator')->choice{$expression}; ?>";
     }
 }

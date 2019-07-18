@@ -72,4 +72,21 @@ class BladeProvider extends ViewServiceProvider
         parent::registerFactory();
         return $this;
     }
+
+    /**
+     * Register the view finder implementation.
+     */
+    public function registerViewFinder()
+    {
+        $thisVar = $this;
+        $this->app->bindIf('view.finder', function ($app) use($thisVar) {
+            $config = $thisVar->app['config'];
+            $paths = $config['view.paths'];
+            $namespaces = $config['view.namespaces'];
+            $finder = new FileViewFinder($app['files'], $paths);
+            array_map(array($finder, 'addNamespace'), array_keys($namespaces), $namespaces);
+            return $finder;
+        }, true);
+        return $this;
+    }
 }
